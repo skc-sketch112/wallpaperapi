@@ -1,5 +1,5 @@
 name = "sourav-image-api"        # Worker name
 main = "index.js"                # <-- your worker JS file
-account_id = "<1bf84f857b3f1d82578c2c1afe888979>" # Replace with your Cloudflare account ID
+account_id = "1bf84f857b3f1d82578c2c1afe888979" # Replace with your Cloudflare account ID
 workers_dev = true
 compatibility_date = "2026-03-08"
