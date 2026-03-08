@@ -13,26 +13,29 @@ export default {
       if (response) {
         images = await response.json();
       } else {
-        const repo = "skc-sketch112/wallpaper-image"; // ✅ fixed
-
+        const repo = "skc-sketch112/wallpaper-image"; // your GitHub repo
         let apiUrls = [];
 
         if (category) {
-          // Fetch images from that folder only
+          // Only fetch images from the specific category folder
           apiUrls.push(`https://api.github.com/repos/${repo}/contents/${category}`);
         } else {
-          // Fetch all root images and all folders for random
+          // Fetch root folder and all category folders
           const rootRes = await fetch(`https://api.github.com/repos/${repo}/contents`, {
             headers: { "User-Agent": "Cloudflare-Worker" }
           });
           const rootData = await rootRes.json();
+
+          if (!Array.isArray(rootData)) {
+            throw new Error(`GitHub API returned invalid data: ${JSON.stringify(rootData)}`);
+          }
 
           // Add root images
           rootData
             .filter(f => /\.(jpg|jpeg|png|webp|gif)$/i.test(f.name))
             .forEach(f => apiUrls.push(f.download_url));
 
-          // Add all folder URLs
+          // Add all category folders
           rootData
             .filter(f => f.type === "dir")
             .forEach(f => apiUrls.push(`https://api.github.com/repos/${repo}/contents/${f.name}`));
@@ -41,15 +44,17 @@ export default {
         images = [];
 
         for (let apiUrl of apiUrls) {
-          // Direct root image
+          // If direct image URL, just add
           if (/\.(jpg|jpeg|png|webp|gif)$/i.test(apiUrl)) {
             images.push(apiUrl);
             continue;
           }
 
-          // Folder fetch
+          // Fetch folder content
           const res = await fetch(apiUrl, { headers: { "User-Agent": "Cloudflare-Worker" } });
           const data = await res.json();
+
+          if (!Array.isArray(data)) continue;
 
           const folderImages = data
             .filter(f => /\.(jpg|jpeg|png|webp|gif)$/i.test(f.name))
@@ -60,14 +65,14 @@ export default {
 
         if (!images.length) return new Response("No images found", { status: 404 });
 
+        // Cache the list for 1 hour
         response = new Response(JSON.stringify(images), {
           headers: { "Content-Type": "application/json", "Cache-Control": "public, max-age=3600" }
         });
-
         ctx.waitUntil(cache.put(cacheKey, response.clone()));
       }
 
-      // Pick random image
+      // Pick a random image
       const random = images[Math.floor(Math.random() * images.length)];
       const img = await fetch(random);
 
