@@ -1,0 +1,6 @@
+name = "sourav-image-api"      # Worker name
+type = "javascript"            # Must be javascript, not webpack
+
+account_id = "<Astronomysong0@gmail.com's>" # Your Cloudflare account id
+workers_dev = true
+compatibility_date = "2026-03-08"
