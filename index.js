@@ -3,7 +3,7 @@ export default {
     try {
       const cache = caches.default;
       const url = new URL(request.url);
-      const category = url.pathname.slice(1).toLowerCase(); // /car -> car, / -> ""
+      const category = url.pathname.slice(1).toLowerCase(); // "/car" -> "car", "/" -> ""
 
       const cacheKey = new Request(`https://cache/wallpaper/${category || "all"}`);
       let response = await cache.match(cacheKey);
@@ -13,7 +13,7 @@ export default {
       if (response) {
         images = await response.json();
       } else {
-        const repo = "skc-sketch112"/wallpaper-image-"; // replace with your repo
+        const repo = "skc-sketch112/wallpaper-image"; // ✅ fixed
 
         let apiUrls = [];
 
@@ -42,7 +42,7 @@ export default {
 
         for (let apiUrl of apiUrls) {
           // Direct root image
-          if (apiUrl.endsWith(".jpg") || apiUrl.endsWith(".png") || apiUrl.endsWith(".webp") || apiUrl.endsWith(".gif")) {
+          if (/\.(jpg|jpeg|png|webp|gif)$/i.test(apiUrl)) {
             images.push(apiUrl);
             continue;
           }
@@ -82,4 +82,4 @@ export default {
       return new Response("Error: " + err.message, { status: 500 });
     }
   }
-}
+};
