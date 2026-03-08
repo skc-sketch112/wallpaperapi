@@ -11,7 +11,7 @@ export default {
       let images = [];
 
       if (!response) {
-        const repo = "skc-sketch112/wallpaper-image-"; // Your GitHub repo
+        const repo = "skc-sketch112/wallpaper-image"; // Your GitHub repo
 
         if (category) {
           // Fetch images from that folder only
