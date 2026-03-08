@@ -2,12 +2,10 @@ export default {
   async fetch(request, env, ctx) {
     try {
       const cache = caches.default;
-
-      // Extract category from URL
       const url = new URL(request.url);
-      const category = url.pathname.slice(1).toLowerCase(); // /car -> car
+      const category = url.pathname.slice(1).toLowerCase(); // /car -> car, / -> ""
 
-      const cacheKey = new Request(`https://cache/wallpaper/${category}`);
+      const cacheKey = new Request(`https://cache/wallpaper/${category || "all"}`);
       let response = await cache.match(cacheKey);
 
       let images;
@@ -15,35 +13,61 @@ export default {
       if (response) {
         images = await response.json();
       } else {
-        const repo = "skc-sketch112/wallpaper-image"; // Replace with your repo
-        const apiUrl = `https://api.github.com/repos/${repo}/contents/${category}`;
+        const repo = "skc-sketch112"/wallpaper-image-"; // replace with your repo
 
-        const res = await fetch(apiUrl, {
-          headers: { "User-Agent": "Cloudflare-Worker" }
-        });
+        let apiUrls = [];
 
-        const data = await res.json();
+        if (category) {
+          // Fetch images from that folder only
+          apiUrls.push(`https://api.github.com/repos/${repo}/contents/${category}`);
+        } else {
+          // Fetch all root images and all folders for random
+          const rootRes = await fetch(`https://api.github.com/repos/${repo}/contents`, {
+            headers: { "User-Agent": "Cloudflare-Worker" }
+          });
+          const rootData = await rootRes.json();
 
-        // Filter only images
-        images = data
-          .filter(f => /\.(jpg|jpeg|png|webp|gif)$/i.test(f.name))
-          .map(f => f.download_url);
+          // Add root images
+          rootData
+            .filter(f => /\.(jpg|jpeg|png|webp|gif)$/i.test(f.name))
+            .forEach(f => apiUrls.push(f.download_url));
 
-        if (!images.length) {
-          return new Response("Category not found or empty", { status: 404 });
+          // Add all folder URLs
+          rootData
+            .filter(f => f.type === "dir")
+            .forEach(f => apiUrls.push(`https://api.github.com/repos/${repo}/contents/${f.name}`));
         }
 
-        response = new Response(JSON.stringify(images), {
-          headers: {
-            "Content-Type": "application/json",
-            "Cache-Control": "public, max-age=3600"
+        images = [];
+
+        for (let apiUrl of apiUrls) {
+          // Direct root image
+          if (apiUrl.endsWith(".jpg") || apiUrl.endsWith(".png") || apiUrl.endsWith(".webp") || apiUrl.endsWith(".gif")) {
+            images.push(apiUrl);
+            continue;
           }
+
+          // Folder fetch
+          const res = await fetch(apiUrl, { headers: { "User-Agent": "Cloudflare-Worker" } });
+          const data = await res.json();
+
+          const folderImages = data
+            .filter(f => /\.(jpg|jpeg|png|webp|gif)$/i.test(f.name))
+            .map(f => f.download_url);
+
+          images.push(...folderImages);
+        }
+
+        if (!images.length) return new Response("No images found", { status: 404 });
+
+        response = new Response(JSON.stringify(images), {
+          headers: { "Content-Type": "application/json", "Cache-Control": "public, max-age=3600" }
         });
 
         ctx.waitUntil(cache.put(cacheKey, response.clone()));
       }
 
-      // Pick a random image
+      // Pick random image
       const random = images[Math.floor(Math.random() * images.length)];
       const img = await fetch(random);
 
