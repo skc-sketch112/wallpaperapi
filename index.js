@@ -13,7 +13,7 @@ export default {
       if (response) {
         images = await response.json();
       } else {
-        const repo = "skc-sketch112/wallpaper-image"; // your GitHub repo
+        const repo = "skc-sketch112/wallpaper-image-"; // your GitHub repo
         let apiUrls = [];
 
         if (category) {
